@@ -1,95 +1,263 @@
-// src/index.js
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import axios from "axios";
-import { fetchYouTubeLive } from "./adapters/youtube.js";
-
-dotenv.config();
-
-// ESM-safe __dirname / __filename (define these BEFORE using them)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-app.use(cors());
-
-// Serve the /public folder (so / loads public/index.html if present)
-const publicDir = path.join(__dirname, "..", "public");
-app.use(express.static(publicDir));
-
-// --- Load seed channel IDs (fallback to empty list if file missing)
-const seedPath = path.join(__dirname, "seed_channels.json");
-let seed = { youtube_channel_ids: [] };
-try {
-  seed = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
-} catch {
-  console.warn("[seed] src/seed_channels.json not found or invalid JSON — using empty list");
-}
-
-let CACHE = { streams: [], updatedAt: null };
-
-async function discoverAll() {
-  const yt = await fetchYouTubeLive({
-    apiKey: process.env.YT_API_KEY,
-    channelIds: seed.youtube_channel_ids,
-  });
-
-  CACHE = { streams: yt, updatedAt: new Date().toISOString() };
-  return CACHE;
-}
-
-// --- Find channels by name -> returns channelId list (handy helper)
-app.get("/api/find-channels", async (req, res) => {
-  try {
-    const q = req.query.q || "";
-    if (!q) return res.status(400).json({ error: "Missing ?q=search term" });
-
-    const { data } = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-      params: {
-        part: "snippet",
-        q,
-        type: "channel",
-        maxResults: 10,
-        key: process.env.YT_API_KEY,
-      },
-    });
-
-    const items = (data.items || []).map((it) => ({
-      channelId: it.id?.channelId,
-      title: it.snippet?.title,
-      url: `https://www.youtube.com/channel/${it.id?.channelId}`,
-    }));
-
-    res.json({ query: q, items });
-  } catch (err) {
-    console.error("find-channels error:", err?.response?.data || err.message);
-    res.status(500).json({ error: "Failed to search channels" });
-  }
-});
-
-// --- Streams API with simple cache (60s)
-app.get("/api/streams", async (_req, res) => {
-  const stale = !CACHE.updatedAt || Date.now() - Date.parse(CACHE.updatedAt) > 60_000;
-  if (stale) {
-    try {
-      await discoverAll();
-    } catch (e) {
-      console.error("Discovery error:", e.message);
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WildLiveWatch — Live Grid Mockup</title>
+  <!-- Madagascar‑inspired friendly vibe: bright jungle gradients, rounded corners, playful font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #071a14;
+      --fg: #f1fff9;
+      --card: #0e2a21;
+      --jungle-1: #12d49e; /* mint */
+      --jungle-2: #25a4ff; /* sky */
+      --jungle-3: #ffb901; /* mango */
+      --stroke: rgba(255,255,255,0.12);
     }
-  }
-  res.json(CACHE);
-});
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; color: var(--fg); font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 800px at 75% -10%, rgba(37,164,255,0.25), transparent 60%),
+        radial-gradient(900px 600px at 20% 110%, rgba(18,212,158,0.20), transparent 60%),
+        linear-gradient(180deg, #05140f, var(--bg));
+    }
 
-// NOTE: No explicit app.get("/") route here.
-// If public/index.html exists, it will be served by express.static above.
+    /* Header + Nav */
+    header {
+      position: sticky; top: 0; z-index: 10;
+      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+      padding: 14px 18px; background: rgba(7,26,20,0.85); backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--stroke);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
+    .brandMark {
+      width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
+      background: conic-gradient(from 120deg, var(--jungle-1), var(--jungle-2), var(--jungle-3));
+      color: #052218; font-weight: 900;
+      box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    }
+    nav { display: flex; gap: 10px; align-items: center; }
+    a.nav {
+      text-decoration: none; color: var(--fg); font-weight: 600; font-size: 14px;
+      padding: 8px 12px; border-radius: 999px; border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.05);
+    }
+    a.nav:hover { background: rgba(255,255,255,0.10); }
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-  discoverAll();
-  setInterval(discoverAll, 60_000);
-});
+    .controls { margin-left: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button, input[type="range"] {
+      appearance: none; border: 1px solid var(--stroke);
+      background: #0c221b; color: var(--fg); border-radius: 12px; padding: 8px 10px;
+      font: inherit;
+    }
+
+    /* Grid */
+    .grid { padding: 18px; display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
+
+    .tile {
+      position: relative; border-radius: 18px; overflow: hidden; background: var(--card);
+      border: 1px solid var(--stroke); box-shadow: 0 16px 40px rgba(0,0,0,.40);
+      aspect-ratio: 16/9; isolation: isolate;
+    }
+    .tile::before{
+      content:""; position:absolute; inset:auto -20% -20% auto; width: 55%; height: 55%; transform: rotate(6deg);
+      background: radial-gradient(closest-side, rgba(255,185,1,0.15), transparent 70%);
+      pointer-events:none; z-index: 0;
+    }
+    .tile video { width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+
+    .title { position:absolute; left:10px; top:10px; z-index:2; pointer-events:none; font-weight:700; font-size:14px;
+      padding:6px 10px; border-radius:12px; color:#052218; background: linear-gradient(180deg, #2ef5c5, #1bdfab); }
+
+    .overlay { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-between; padding:10px;
+      pointer-events:none; z-index:2; background: linear-gradient(180deg, transparent 65%, rgba(0,0,0,.45)); }
+
+    .leftStack { display:flex; gap:8px; align-items:center; pointer-events:auto; }
+    .badge { font-size:12px; padding:5px 8px; border-radius:999px; background: rgba(0,0,0,.55); border:1px solid var(--stroke); }
+
+    .controlsBar { display:flex; align-items:center; gap:8px; pointer-events:auto; }
+    .iconBtn { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; cursor:pointer; background: rgba(0,0,0,.5); border:1px solid var(--stroke); color:var(--fg); transition: transform .08s ease, background .2s ease; }
+    .iconBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,.6); }
+    .range { width:130px; height:36px; display:inline-flex; align-items:center; padding:0 8px; gap:8px; border-radius:12px; background: rgba(0,0,0,.5); border:1px solid var(--stroke); }
+    .range input { width:100%; background:transparent; }
+
+    .floatingHint { position:absolute; inset:0; display:grid; place-items:center; color:#e9fff7; pointer-events:none; z-index:1; opacity:0; transition:opacity .25s ease; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+    .tile.initial .floatingHint { opacity: 1; }
+
+    footer { opacity:.8; padding: 20px; text-align:center; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brandMark">🐾</div>
+      <div><span style="font-weight:700;">Wild</span>LiveWatch</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-self:end;">
+      <nav>
+        <a class="nav" href="/index.html">Home</a>
+        <a class="nav" href="/gallery.html">Gallery</a>
+        <a class="nav" href="/about.html">About</a>
+        <a class="nav" href="/contact.html">Contact</a>
+      </nav>
+      <div class="controls">
+        <label for="tileCount">Tiles:</label>
+        <select id="tileCount">
+          <option value="4">4</option>
+          <option value="6" selected>6</option>
+          <option value="8">8</option>
+        </select>
+        <button id="pauseAll">Pause all</button>
+        <button id="playAll">Play all</button>
+        <button id="muteAll">Mute all</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <footer>
+    Tip: Most browsers only allow <em>autoplay</em> when the video is <strong>muted</strong>. Click a tile to unmute it (only one tile has sound at a time).
+  </footer>
+
+  <template id="tileTpl">
+    <article class="tile initial" data-id="">
+      <div class="title"></div>
+      <video playsinline muted autoplay loop preload="metadata" poster="" aria-label="Live camera feed"></video>
+      <div class="floatingHint">Click to unmute 🔊</div>
+      <div class="overlay">
+        <div class="leftStack">
+          <span class="badge status">LIVE</span>
+          <span class="badge latency" title="Mock latency">~2s</span>
+        </div>
+        <div class="controlsBar">
+          <button class="iconBtn btnMute" title="Toggle mute">🔇</button>
+          <div class="range" title="Volume">
+            <span>🔊</span>
+            <input class="vol" type="range" min="0" max="1" step="0.01" value="0.5" />
+          </div>
+          <button class="iconBtn btnPlay" title="Play / Pause">⏯</button>
+          <button class="iconBtn btnFs" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <!-- HLS support (for .m3u8 streams) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    // ====== CONFIG: swap in your real camera URLs here ======
+    // For each stream, set title, src, and optional poster image.
+    // HLS (.m3u8) will auto-use hls.js; MP4 will play natively.
+    const STREAMS = [
+      // EXAMPLES — replace with your real feeds
+      { title: "Savannah Cam", src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Savanna_Landscape.jpg/640px-Savanna_Landscape.jpg" },
+      { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8", poster: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Waterhole.jpg" },
+      { title: "Cliff Rookery", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Common_murre_breeding_colony_Hornoya.jpg/640px-Common_murre_breeding_colony_Hornoya.jpg" },
+      { title: "River Bend", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Gauja_River_at_C%C4%93sis.jpg/640px-Gauja_River_at_C%C4%99sis.jpg" },
+      { title: "Desert Den", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Desert_-_Dune_-_Sand.jpg/640px-Desert_-_Dune_-_Sand.jpg" },
+      { title: "Rainforest Canopy", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Tropical_rainforest.jpg/640px-Tropical_rainforest.jpg" },
+      { title: "Mountain Pass", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Khardung_La%2C_Ladakh.jpg/640px-Khardung_La%2C_Ladakh.jpg" },
+      { title: "Delta Marsh", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Okavango_Delta%2C_Namibia.jpg/640px-Okavango_Delta%2C_Namibia.jpg" },
+    ];
+
+    // ====== DEFAULT TILE COUNT ======
+    const DEFAULT_TILES = 6; // change to 4 or 8 if you prefer
+
+    // ====== BOOTSTRAP ======
+    const grid = document.getElementById('grid');
+    const tileCountSel = document.getElementById('tileCount');
+    const btnPauseAll = document.getElementById('pauseAll');
+    const btnPlayAll = document.getElementById('playAll');
+    const btnMuteAll = document.getElementById('muteAll');
+
+    let tiles = []; // {el, video, id, hls}
+
+    function isHls(url){ return /\.m3u8($|\?)/i.test(url); }
+
+    function attachSource(video, url){
+      if (isHls(url)) {
+        if (window.Hls && Hls.isSupported()) {
+          const hls = new Hls({lowLatencyMode:true});
+          hls.loadSource(url); hls.attachMedia(video);
+          return hls;
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = url; // Safari
+        } else {
+          console.warn('HLS not supported in this browser');
+        }
+      } else {
+        video.src = url;
+      }
+      return null;
+    }
+
+    function renderTiles(n) {
+      grid.innerHTML = '';
+      tiles = [];
+      const tpl = document.getElementById('tileTpl');
+      for (let i = 0; i < n; i++) {
+        const data = STREAMS[i % STREAMS.length];
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        const id = `tile-${i+1}`; node.dataset.id = id;
+        node.querySelector('.title').textContent = `${data.title}`;
+        const v = node.querySelector('video');
+        v.poster = data.poster || '';
+        v.muted = true; v.volume = 0.5; v.autoplay = true; v.loop = true; v.playsInline = true;
+
+        const hls = attachSource(v, data.src);
+
+        // Interactions
+        node.addEventListener('click', (e) => {
+          if (e.target.closest('.controlsBar')) return; // ignore if clicking controls
+          toggleMute(node, false);
+        });
+        node.querySelector('.btnMute').addEventListener('click', (e) => { e.stopPropagation(); toggleMute(node, !v.muted); });
+        node.querySelector('.btnPlay').addEventListener('click', (e) => { e.stopPropagation(); if (v.paused) { v.play(); } else { v.pause(); } updateButtons(node, v); });
+        node.querySelector('.btnFs').addEventListener('click', (e) => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
+        node.querySelector('.vol').addEventListener('input', (e) => { v.volume = parseFloat(e.target.value); if (v.muted && v.volume > 0) toggleMute(node, false); });
+        v.addEventListener('play', () => node.classList.remove('initial'));
+        node.addEventListener('pointerdown', () => { if (v.paused) v.play().catch(()=>{}); });
+
+        grid.appendChild(node);
+        tiles.push({ el: node, video: v, id, hls });
+        updateButtons(node, v);
+      }
+    }
+
+    function toggleMute(targetTile, keepMuted) {
+      tiles.forEach(({ el, video }) => {
+        const isTarget = el === targetTile;
+        if (isTarget) {
+          video.muted = keepMuted;
+          if (!keepMuted) { video.muted = false; video.play().catch(()=>{}); }
+        } else {
+          video.muted = true;
+        }
+        updateButtons(el, video);
+      });
+    }
+
+    function updateButtons(el, v){
+      el.querySelector('.btnMute').textContent = v.muted ? '🔇' : '🔊';
+      el.querySelector('.btnPlay').textContent = v.paused ? '▶' : '⏸';
+    }
+
+    tileCountSel.addEventListener('change', () => { renderTiles(parseInt(tileCountSel.value, 10)); });
+    btnPauseAll.addEventListener('click', () => tiles.forEach(t => { t.video.pause(); updateButtons(t.el,t.video);}));
+    btnPlayAll.addEventListener('click', () => tiles.forEach(t => { t.video.play().catch(()=>{}); updateButtons(t.el,t.video);}));
+    btnMuteAll.addEventListener('click', () => tiles.forEach(t => { t.video.muted = true; updateButtons(t.el,t.video);}));
+
+    // Initial render (and set select to default)
+    renderTiles(DEFAULT_TILES);
+    tileCountSel.value = String(DEFAULT_TILES);
+  </script>
+</body>
+</html>
