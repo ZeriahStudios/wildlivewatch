@@ -1,26 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>About — WildLiveWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;margin:0}
+    body{margin:0;font-family:'Poppins',system-ui,Arial;background:#071a14;color:#f1fff9;line-height:1.6}
     .wrap{max-width:860px;margin:0 auto;padding:28px 16px}
-    a{color:#0ea5e9;text-decoration:none} a:hover{text-decoration:underline}
+    h1,h2{margin-top:0}
+    a{color:#25a4ff;text-decoration:none}a:hover{text-decoration:underline}
+    .bannerWrap{padding:14px 14px 0}
+    .banner{width:100%;border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,.35)}
   </style>
 </head>
 <body>
   <div class="bannerWrap">
-  <picture>
-    <source media="(max-width: 768px)" srcset="./mobile_banner.webp">
-    <img class="banner" src="./desktop_banner.webp" alt="WildLiveWatch — safari friends in a Madagascar sunset">
-  </picture>
-</div>
-
+    <picture>
+      <source media="(max-width: 768px)" srcset="./mobile_banner.webp">
+      <img class="banner" src="./desktop_banner.webp" alt="WildLiveWatch banner">
+    </picture>
+  </div>
   <div class="wrap">
     <p><a href="./index.html">← Back to Home</a></p>
     <h1>About WildLiveWatch</h1>
-    <p>We’re building a friendly, educational hub for wildlife lovers. This is a work in progress—more soon!</p>
+    <p>WildLiveWatch is a playful way to explore the world’s wildlife. Inspired by the joy of safari animals in a Madagascar sunset, we stream live animal cameras from around the globe and bring them together into one friendly site.</p>
+    <h2>Our Mission</h2>
+    <p>We want to make it fun and easy for families, kids, and curious explorers to connect with nature — whether that’s spotting elephants by a watering hole, watching penguins waddle, or simply enjoying the calm of a forest stream.</p>
+    <h2>How It Works</h2>
+    <p>We aggregate public live streams and present them in a colorful, easy-to-use grid. All videos autoplay muted (to comply with browser rules), and you can unmute any tile to hear the sounds of nature.</p>
   </div>
 </body>
 </html>
