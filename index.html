@@ -3,98 +3,115 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WildLiveWatch — Live Grid Mockup</title>
-  <!-- Madagascar‑inspired friendly vibe: bright jungle gradients, rounded corners, playful font -->
+  <title>WildLiveWatch — Live Grid</title>
+
+  <!-- Friendly jungle vibe -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg: #071a14;
-      --fg: #f1fff9;
-      --card: #0e2a21;
-      --jungle-1: #12d49e; /* mint */
-      --jungle-2: #25a4ff; /* sky */
-      --jungle-3: #ffb901; /* mango */
-      --stroke: rgba(255,255,255,0.12);
+    :root{
+      --bg:#071a14;         /* deep jungle */
+      --fg:#f1fff9;         /* minty text */
+      --card:#0e2a21;       /* card background */
+      --stroke:rgba(255,255,255,.12);
+      --accent:#25a4ff;     /* sky */
+      --accent2:#12d49e;    /* mint */
+      --mango:#ffb901;      /* mango */
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; color: var(--fg); font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--fg); font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial;
       background:
-        radial-gradient(1200px 800px at 75% -10%, rgba(37,164,255,0.25), transparent 60%),
-        radial-gradient(900px 600px at 20% 110%, rgba(18,212,158,0.20), transparent 60%),
-        linear-gradient(180deg, #05140f, var(--bg));
+        radial-gradient(1200px 800px at 75% -10%, rgba(37,164,255,.22), transparent 60%),
+        radial-gradient(900px 600px at 20% 110%, rgba(18,212,158,.18), transparent 60%),
+        linear-gradient(180deg,#05140f,var(--bg));
+    }
+
+    /* Banner */
+    .bannerWrap{padding:14px 14px 0}
+    .banner{
+      width:100%; height:auto; display:block; border-radius:18px;
+      box-shadow:0 16px 40px rgba(0,0,0,.35); border:1px solid var(--stroke);
     }
 
     /* Header + Nav */
-    header {
-      position: sticky; top: 0; z-index: 10;
-      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
-      padding: 14px 18px; background: rgba(7,26,20,0.85); backdrop-filter: blur(6px);
-      border-bottom: 1px solid var(--stroke);
+    header{
+      position:sticky; top:0; z-index:10;
+      display:grid; grid-template-columns:1fr auto; align-items:center; gap:12px;
+      padding:12px 18px; background:rgba(7,26,20,.88); backdrop-filter:blur(6px);
+      border-bottom:1px solid var(--stroke);
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
-    .brandMark {
-      width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
-      background: conic-gradient(from 120deg, var(--jungle-1), var(--jungle-2), var(--jungle-3));
-      color: #052218; font-weight: 900;
-      box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px}
+    .brandMark{
+      width:36px; height:36px; border-radius:12px; display:grid; place-items:center;
+      background:conic-gradient(from 120deg,var(--accent2),var(--accent),var(--mango));
+      color:#052218; font-weight:900; box-shadow:0 6px 20px rgba(0,0,0,.35);
     }
-    nav { display: flex; gap: 10px; align-items: center; }
-    a.nav {
-      text-decoration: none; color: var(--fg); font-weight: 600; font-size: 14px;
-      padding: 8px 12px; border-radius: 999px; border: 1px solid var(--stroke);
-      background: rgba(255,255,255,0.05);
+    nav{display:flex; gap:10px; align-items:center}
+    a.nav{
+      text-decoration:none; color:var(--fg); font-weight:600; font-size:14px;
+      padding:8px 12px; border-radius:999px; border:1px solid var(--stroke);
+      background:rgba(255,255,255,.06);
     }
-    a.nav:hover { background: rgba(255,255,255,0.10); }
+    a.nav:hover{background:rgba(255,255,255,.12)}
 
-    .controls { margin-left: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    select, button, input[type="range"] {
-      appearance: none; border: 1px solid var(--stroke);
-      background: #0c221b; color: var(--fg); border-radius: 12px; padding: 8px 10px;
-      font: inherit;
+    .controls{margin-left:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    select,button,input[type="range"]{
+      appearance:none; border:1px solid var(--stroke);
+      background:#0c221b; color:var(--fg); border-radius:12px; padding:8px 10px; font:inherit;
     }
 
     /* Grid */
-    .grid { padding: 18px; display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0,1fr)); }
-    @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
+    .grid{padding:18px; display:grid; gap:14px; grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (max-width:920px){.grid{grid-template-columns:1fr}}
 
-    .tile {
-      position: relative; border-radius: 18px; overflow: hidden; background: var(--card);
-      border: 1px solid var(--stroke); box-shadow: 0 16px 40px rgba(0,0,0,.40);
-      aspect-ratio: 16/9; isolation: isolate;
+    .tile{
+      position:relative; border-radius:18px; overflow:hidden; background:var(--card);
+      border:1px solid var(--stroke); box-shadow:0 16px 40px rgba(0,0,0,.40);
+      aspect-ratio:16/9; isolation:isolate;
     }
     .tile::before{
-      content:""; position:absolute; inset:auto -20% -20% auto; width: 55%; height: 55%; transform: rotate(6deg);
-      background: radial-gradient(closest-side, rgba(255,185,1,0.15), transparent 70%);
-      pointer-events:none; z-index: 0;
+      content:""; position:absolute; inset:auto -20% -20% auto; width:55%; height:55%; transform:rotate(6deg);
+      background:radial-gradient(closest-side, rgba(255,185,1,.14), transparent 70%); pointer-events:none; z-index:0;
     }
-    .tile video { width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+    .tile video{width:100%; height:100%; object-fit:cover; display:block; background:#000}
 
-    .title { position:absolute; left:10px; top:10px; z-index:2; pointer-events:none; font-weight:700; font-size:14px;
-      padding:6px 10px; border-radius:12px; color:#052218; background: linear-gradient(180deg, #2ef5c5, #1bdfab); }
+    .title{
+      position:absolute; left:10px; top:10px; z-index:2; pointer-events:none; font-weight:700; font-size:14px;
+      padding:6px 10px; border-radius:12px; color:#052218;
+      background:linear-gradient(180deg,#2ef5c5,#1bdfab);
+    }
+    .overlay{position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-between; padding:10px;
+      pointer-events:none; z-index:2; background:linear-gradient(180deg, transparent 65%, rgba(0,0,0,.45))}
+    .leftStack{display:flex; gap:8px; align-items:center; pointer-events:auto}
+    .badge{font-size:12px; padding:5px 8px; border-radius:999px; background:rgba(0,0,0,.55); border:1px solid var(--stroke)}
+    .controlsBar{display:flex; align-items:center; gap:8px; pointer-events:auto}
+    .iconBtn{width:38px; height:38px; border-radius:12px; display:grid; place-items:center; cursor:pointer;
+      background:rgba(0,0,0,.5); border:1px solid var(--stroke); color:var(--fg); transition:transform .08s, background .2s}
+    .iconBtn:hover{transform:translateY(-1px); background:rgba(0,0,0,.6)}
+    .range{width:130px; height:36px; display:inline-flex; align-items:center; padding:0 8px; gap:8px;
+      border-radius:12px; background:rgba(0,0,0,.5); border:1px solid var(--stroke)}
+    .range input{width:100%; background:transparent}
 
-    .overlay { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-between; padding:10px;
-      pointer-events:none; z-index:2; background: linear-gradient(180deg, transparent 65%, rgba(0,0,0,.45)); }
+    .floatingHint{position:absolute; inset:0; display:grid; place-items:center; color:#e9fff7; pointer-events:none; z-index:1;
+      opacity:0; transition:opacity .25s; text-shadow:0 2px 10px rgba(0,0,0,.6)}
+    .tile.initial .floatingHint{opacity:1}
 
-    .leftStack { display:flex; gap:8px; align-items:center; pointer-events:auto; }
-    .badge { font-size:12px; padding:5px 8px; border-radius:999px; background: rgba(0,0,0,.55); border:1px solid var(--stroke); }
-
-    .controlsBar { display:flex; align-items:center; gap:8px; pointer-events:auto; }
-    .iconBtn { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; cursor:pointer; background: rgba(0,0,0,.5); border:1px solid var(--stroke); color:var(--fg); transition: transform .08s ease, background .2s ease; }
-    .iconBtn:hover { transform: translateY(-1px); background: rgba(0,0,0,.6); }
-    .range { width:130px; height:36px; display:inline-flex; align-items:center; padding:0 8px; gap:8px; border-radius:12px; background: rgba(0,0,0,.5); border:1px solid var(--stroke); }
-    .range input { width:100%; background:transparent; }
-
-    .floatingHint { position:absolute; inset:0; display:grid; place-items:center; color:#e9fff7; pointer-events:none; z-index:1; opacity:0; transition:opacity .25s ease; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
-    .tile.initial .floatingHint { opacity: 1; }
-
-    footer { opacity:.8; padding: 20px; text-align:center; font-size:12px; }
+    footer{opacity:.8; padding: 0 18px 24px; text-align:center; font-size:12px}
   </style>
 </head>
 <body>
+  <!-- Responsive banner -->
+  <div class="bannerWrap">
+    <picture>
+      <source media="(max-width: 768px)" srcset="./mobile_banner.webp">
+      <img class="banner" src="./desktop_banner.webp" alt="WildLiveWatch — safari friends in a Madagascar sunset">
+    </picture>
+  </div>
+
   <header>
     <div class="brand">
       <div class="brandMark">🐾</div>
@@ -124,7 +141,8 @@
   <main class="grid" id="grid"></main>
 
   <footer>
-    Tip: Most browsers only allow <em>autoplay</em> when the video is <strong>muted</strong>. Click a tile to unmute it (only one tile has sound at a time).
+    Tip: Most browsers only allow <em>autoplay</em> when the video is <strong>muted</strong>. Click a tile to unmute it
+    (only one tile has sound at a time).
   </footer>
 
   <template id="tileTpl">
@@ -150,112 +168,93 @@
     </article>
   </template>
 
-  <!-- HLS support (for .m3u8 streams) -->
+  <!-- HLS support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    // ====== CONFIG: swap in your real camera URLs here ======
-    // For each stream, set title, src, and optional poster image.
-    // HLS (.m3u8) will auto-use hls.js; MP4 will play natively.
+    // Swap in your real feeds (m3u8 auto-uses Hls; MP4 plays natively)
     const STREAMS = [
-      // EXAMPLES — replace with your real feeds
-      { title: "Savannah Cam", src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Savanna_Landscape.jpg/640px-Savanna_Landscape.jpg" },
-      { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8", poster: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Waterhole.jpg" },
-      { title: "Cliff Rookery", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Common_murre_breeding_colony_Hornoya.jpg/640px-Common_murre_breeding_colony_Hornoya.jpg" },
-      { title: "River Bend", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Gauja_River_at_C%C4%93sis.jpg/640px-Gauja_River_at_C%C4%99sis.jpg" },
-      { title: "Desert Den", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Desert_-_Dune_-_Sand.jpg/640px-Desert_-_Dune_-_Sand.jpg" },
-      { title: "Rainforest Canopy", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Tropical_rainforest.jpg/640px-Tropical_rainforest.jpg" },
-      { title: "Mountain Pass", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Khardung_La%2C_Ladakh.jpg/640px-Khardung_La%2C_Ladakh.jpg" },
-      { title: "Delta Marsh", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Okavango_Delta%2C_Namibia.jpg/640px-Okavango_Delta%2C_Namibia.jpg" },
+      { title: "Savannah Cam",     src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", poster: "" },
+      { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8", poster: "" },
+      { title: "Cliff Rookery",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
+      { title: "River Bend",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
+      { title: "Desert Den",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
+      { title: "Rainforest Canopy",src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
+      { title: "Mountain Pass",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
+      { title: "Delta Marsh",      src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", poster: "" },
     ];
 
-    // ====== DEFAULT TILE COUNT ======
-    const DEFAULT_TILES = 6; // change to 4 or 8 if you prefer
+    const DEFAULT_TILES = 6;
 
-    // ====== BOOTSTRAP ======
     const grid = document.getElementById('grid');
     const tileCountSel = document.getElementById('tileCount');
     const btnPauseAll = document.getElementById('pauseAll');
-    const btnPlayAll = document.getElementById('playAll');
-    const btnMuteAll = document.getElementById('muteAll');
+    const btnPlayAll  = document.getElementById('playAll');
+    const btnMuteAll  = document.getElementById('muteAll');
+    let tiles = [];
 
-    let tiles = []; // {el, video, id, hls}
-
-    function isHls(url){ return /\.m3u8($|\?)/i.test(url); }
-
+    const isHls = url => /\.m3u8($|\?)/i.test(url);
     function attachSource(video, url){
       if (isHls(url)) {
-        if (window.Hls && Hls.isSupported()) {
+        if (window.Hls && Hls.isSupported()){
           const hls = new Hls({lowLatencyMode:true});
           hls.loadSource(url); hls.attachMedia(video);
           return hls;
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.src = url; // Safari
-        } else {
-          console.warn('HLS not supported in this browser');
+          video.src = url;
         }
-      } else {
-        video.src = url;
-      }
+      } else { video.src = url; }
       return null;
     }
 
-    function renderTiles(n) {
-      grid.innerHTML = '';
-      tiles = [];
+    function renderTiles(n){
+      grid.innerHTML=''; tiles=[];
       const tpl = document.getElementById('tileTpl');
-      for (let i = 0; i < n; i++) {
+      for (let i=0;i<n;i++){
         const data = STREAMS[i % STREAMS.length];
         const node = tpl.content.firstElementChild.cloneNode(true);
-        const id = `tile-${i+1}`; node.dataset.id = id;
-        node.querySelector('.title').textContent = `${data.title}`;
         const v = node.querySelector('video');
+        node.querySelector('.title').textContent = data.title;
         v.poster = data.poster || '';
-        v.muted = true; v.volume = 0.5; v.autoplay = true; v.loop = true; v.playsInline = true;
-
-        const hls = attachSource(v, data.src);
+        v.muted = true; v.volume=.5; v.autoplay=true; v.loop=true; v.playsInline=true;
+        attachSource(v, data.src);
 
         // Interactions
-        node.addEventListener('click', (e) => {
-          if (e.target.closest('.controlsBar')) return; // ignore if clicking controls
+        node.addEventListener('click', e => {
+          if (e.target.closest('.controlsBar')) return;
           toggleMute(node, false);
         });
-        node.querySelector('.btnMute').addEventListener('click', (e) => { e.stopPropagation(); toggleMute(node, !v.muted); });
-        node.querySelector('.btnPlay').addEventListener('click', (e) => { e.stopPropagation(); if (v.paused) { v.play(); } else { v.pause(); } updateButtons(node, v); });
-        node.querySelector('.btnFs').addEventListener('click', (e) => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
-        node.querySelector('.vol').addEventListener('input', (e) => { v.volume = parseFloat(e.target.value); if (v.muted && v.volume > 0) toggleMute(node, false); });
+        node.querySelector('.btnMute').addEventListener('click', e => { e.stopPropagation(); toggleMute(node, !v.muted); });
+        node.querySelector('.btnPlay').addEventListener('click', e => { e.stopPropagation(); if (v.paused) v.play(); else v.pause(); updateBtns(node,v); });
+        node.querySelector('.btnFs').addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
+        node.querySelector('.vol').addEventListener('input', e => { v.volume = parseFloat(e.target.value); if (v.muted && v.volume>0) toggleMute(node,false); });
         v.addEventListener('play', () => node.classList.remove('initial'));
         node.addEventListener('pointerdown', () => { if (v.paused) v.play().catch(()=>{}); });
 
         grid.appendChild(node);
-        tiles.push({ el: node, video: v, id, hls });
-        updateButtons(node, v);
+        tiles.push({el:node, video:v});
+        updateBtns(node,v);
       }
     }
 
-    function toggleMute(targetTile, keepMuted) {
-      tiles.forEach(({ el, video }) => {
-        const isTarget = el === targetTile;
-        if (isTarget) {
+    function toggleMute(target, keepMuted){
+      tiles.forEach(({el,video})=>{
+        if (el===target){
           video.muted = keepMuted;
-          if (!keepMuted) { video.muted = false; video.play().catch(()=>{}); }
-        } else {
-          video.muted = true;
-        }
-        updateButtons(el, video);
+          if (!keepMuted){ video.muted=false; video.play().catch(()=>{}); }
+        } else { video.muted = true; }
+        updateBtns(el,video);
       });
     }
-
-    function updateButtons(el, v){
+    function updateBtns(el,v){
       el.querySelector('.btnMute').textContent = v.muted ? '🔇' : '🔊';
       el.querySelector('.btnPlay').textContent = v.paused ? '▶' : '⏸';
     }
 
-    tileCountSel.addEventListener('change', () => { renderTiles(parseInt(tileCountSel.value, 10)); });
-    btnPauseAll.addEventListener('click', () => tiles.forEach(t => { t.video.pause(); updateButtons(t.el,t.video);}));
-    btnPlayAll.addEventListener('click', () => tiles.forEach(t => { t.video.play().catch(()=>{}); updateButtons(t.el,t.video);}));
-    btnMuteAll.addEventListener('click', () => tiles.forEach(t => { t.video.muted = true; updateButtons(t.el,t.video);}));
+    tileCountSel.addEventListener('change', ()=> renderTiles(parseInt(tileCountSel.value,10)));
+    btnPauseAll.addEventListener('click', ()=> tiles.forEach(t=>{ t.video.pause(); updateBtns(t.el,t.video); }));
+    btnPlayAll .addEventListener('click', ()=> tiles.forEach(t=>{ t.video.play().catch(()=>{}); updateBtns(t.el,t.video); }));
+    btnMuteAll .addEventListener('click', ()=> tiles.forEach(t=>{ t.video.muted=true; updateBtns(t.el,t.video); }));
 
-    // Initial render (and set select to default)
     renderTiles(DEFAULT_TILES);
     tileCountSel.value = String(DEFAULT_TILES);
   </script>
