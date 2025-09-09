@@ -1,131 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WildLiveWatch — Closer to Wildlife</title>
-  <meta name="description" content="WildLiveWatch brings you closer to wildlife with stories, resources, and conservation links." />
-  <meta property="og:title" content="WildLiveWatch — Closer to Wildlife" />
-  <meta property="og:description" content="WildLiveWatch brings you closer to wildlife with stories, resources, and conservation links." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://wildlivewatch.com/" />
-  <style>
-    :root{
-      --fg:#1f2937; --muted:#6b7280; --accent:#0ea5e9; --accent-2:#10b981; --bg:#ffffff;
-      --card:#f8fafc; --shadow:0 10px 30px rgba(0,0,0,.08);
+// src/index.js
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import axios from "axios";
+import { fetchYouTubeLive } from "./adapters/youtube.js";
+
+dotenv.config();
+
+// ESM-safe __dirname / __filename (define these BEFORE using them)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(cors());
+
+// Serve the /public folder (so / loads public/index.html if present)
+const publicDir = path.join(__dirname, "..", "public");
+app.use(express.static(publicDir));
+
+// --- Load seed channel IDs (fallback to empty list if file missing)
+const seedPath = path.join(__dirname, "seed_channels.json");
+let seed = { youtube_channel_ids: [] };
+try {
+  seed = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
+} catch {
+  console.warn("[seed] src/seed_channels.json not found or invalid JSON — using empty list");
+}
+
+let CACHE = { streams: [], updatedAt: null };
+
+async function discoverAll() {
+  const yt = await fetchYouTubeLive({
+    apiKey: process.env.YT_API_KEY,
+    channelIds: seed.youtube_channel_ids,
+  });
+
+  CACHE = { streams: yt, updatedAt: new Date().toISOString() };
+  return CACHE;
+}
+
+// --- Find channels by name -> returns channelId list (handy helper)
+app.get("/api/find-channels", async (req, res) => {
+  try {
+    const q = req.query.q || "";
+    if (!q) return res.status(400).json({ error: "Missing ?q=search term" });
+
+    const { data } = await axios.get("https://www.googleapis.com/youtube/v3/search", {
+      params: {
+        part: "snippet",
+        q,
+        type: "channel",
+        maxResults: 10,
+        key: process.env.YT_API_KEY,
+      },
+    });
+
+    const items = (data.items || []).map((it) => ({
+      channelId: it.id?.channelId,
+      title: it.snippet?.title,
+      url: `https://www.youtube.com/channel/${it.id?.channelId}`,
+    }));
+
+    res.json({ query: q, items });
+  } catch (err) {
+    console.error("find-channels error:", err?.response?.data || err.message);
+    res.status(500).json({ error: "Failed to search channels" });
+  }
+});
+
+// --- Streams API with simple cache (60s)
+app.get("/api/streams", async (_req, res) => {
+  const stale = !CACHE.updatedAt || Date.now() - Date.parse(CACHE.updatedAt) > 60_000;
+  if (stale) {
+    try {
+      await discoverAll();
+    } catch (e) {
+      console.error("Discovery error:", e.message);
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg)}
-    a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  }
+  res.json(CACHE);
+});
 
-    /* NAV */
-    .nav{position:sticky;top:0;z-index:50;background:#ffffffcc;backdrop-filter:saturate(1.5) blur(8px);border-bottom:1px solid #eef2f7}
-    .nav-inner{max-width:1080px;margin:0 auto;display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 16px}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px}
-    .brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#0ea5e9, #10b981);display:inline-block}
-    .links{display:flex;gap:18px}
-    .links a{color:var(--fg);font-weight:600}
-    .menu-btn{display:none}
+// NOTE: No explicit app.get("/") route here.
+// If public/index.html exists, it will be served by express.static above.
 
-    /* HERO */
-    .hero{position:relative;isolation:isolate}
-    .hero img{width:100%;height:58vh;min-height:360px;max-height:680px;object-fit:cover;display:block;filter:saturate(1.05) contrast(1.05) brightness(.95)}
-    .hero-overlay{position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.15) 55%, rgba(0,0,0,0))}
-    .hero-content{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);width:min(92%,1080px);color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.45)}
-    .hero h1{margin:0 0 8px;font-size:clamp(28px,5vw,48px);line-height:1.1}
-    .hero p{margin:0 0 18px;font-size:clamp(14px,2.6vw,18px);opacity:.95}
-    .cta{display:inline-flex;gap:10px;align-items:center;background:var(--accent);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);font-weight:700}
-    .cta.sec{background:#ffffffeb;color:#0f172a}
-
-    /* SECTION */
-    .wrap{max-width:1080px;margin:0 auto;padding:36px 16px}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-    .card{background:var(--card);padding:18px;border-radius:16px;box-shadow:var(--shadow);border:1px solid #eef2f7}
-    .card h3{margin:6px 0 8px}
-    .card p{margin:0;color:var(--muted)}
-    .pill{display:inline-block;font-weight:700;font-size:12px;background:var(--accent-2);color:#fff;padding:6px 10px;border-radius:999px}
-
-    /* FOOTER */
-    footer{margin-top:28px;border-top:1px solid #eef2f7}
-    .foot{max-width:1080px;margin:0 auto;padding:22px 16px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-
-    /* MOBILE */
-    @media (max-width:820px){
-      .links{display:none}
-      .menu-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;background:#fff}
-      .grid{grid-template-columns:1fr}
-      .hero img{height:48vh}
-    }
-  </style>
-</head>
-<body>
-  <!-- NAV -->
-  <nav class="nav">
-    <div class="nav-inner">
-      <div class="brand">
-        <span class="logo" aria-hidden="true"></span>
-        WildLiveWatch
-      </div>
-      <div class="links">
-        <a href="./index.html">Home</a>
-        <a href="./about.html">About</a>
-        <a href="./gallery.html">Gallery</a>
-        <a href="./contact.html">Contact</a>
-      </div>
-      <button class="menu-btn" onclick="alert('On mobile, use the links in the footer for now 😊');">Menu</button>
-    </div>
-  </nav>
-
-  <!-- HERO -->
-  <section class="hero">
-    <!-- Free Unsplash banner (photo by David Clode) -->
-    <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop" alt="Wildlife banner">
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <h1>Get closer to wildlife, safely and responsibly.</h1>
-      <p>Stories, resources, and curated links to help everyone enjoy and protect the natural world.</p>
-      <a class="cta" href="#features">Explore Features</a>
-      <a class="cta sec" href="./about.html">About the Project</a>
-    </div>
-  </section>
-
-  <!-- FEATURES -->
-  <main class="wrap" id="features">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
-      <h2 style="margin:0;">What we’re building</h2>
-      <span class="pill">MVP in progress</span>
-    </div>
-
-    <div class="grid">
-      <article class="card">
-        <h3>Live & learning-friendly content</h3>
-        <p>Kid-friendly explanations of habitats, animal behaviors, and conservation terms.</p>
-      </article>
-
-      <article class="card">
-        <h3>Curated conservation links</h3>
-        <p>Discover trustworthy organizations, live cams, and resources to learn and support.</p>
-      </article>
-
-      <article class="card">
-        <h3>Community updates</h3>
-        <p>Project milestones, planned features, and calls for collaboration from nature lovers.</p>
-      </article>
-    </div>
-  </main>
-
-  <!-- FOOTER -->
-  <footer>
-    <div class="foot">
-      <div>© <span id="y"></span> WildLiveWatch.com</div>
-      <div style="display:flex;gap:14px">
-        <a href="./about.html">About</a>
-        <a href="./gallery.html">Gallery</a>
-        <a href="./contact.html">Contact</a>
-      </div>
-    </div>
-  </footer>
-
-  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
-</body>
-</html>
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+  discoverAll();
+  setInterval(discoverAll, 60_000);
+});
