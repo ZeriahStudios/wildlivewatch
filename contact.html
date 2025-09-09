@@ -71,7 +71,7 @@
     <p class="note" style="margin-top:16px">
       Prefer email? You can also reach us at
       <span class="mailto">
-        <a id="mailto" href="mailto:support@wildlivewatch.com"><strong>support@wildlivewatch.com</strong></a>
+        <a id="mailto" href="mailto:contact@wildlivewatch.com"><strong>contact@wildlivewatch.com</strong></a>
         <button class="copyBtn" id="copyBtn" type="button" aria-label="Copy email address">Copy</button>
       </span>
     </p>
@@ -111,7 +111,7 @@
 
     // Copy-to-clipboard for the email address
     document.getElementById('copyBtn').addEventListener('click', async () => {
-      const email = 'support@wildlivewatch.com';
+      const email = 'contact@wildlivewatch.com';
       try {
         await navigator.clipboard.writeText(email);
         const btn = document.getElementById('copyBtn');
