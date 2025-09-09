@@ -4,26 +4,56 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Contact — WildLiveWatch</title>
   <style>
-    :root{--fg:#1f2937; --muted:#6b7280; --accent:#0ea5e9; --ok:#10b981; --err:#ef4444}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;margin:0;color:var(--fg);line-height:1.5}
-    .wrap{max-width:860px;margin:0 auto;padding:28px 16px}
-    a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
-    h1{margin-top:0}
-    form{margin-top:14px;display:grid;gap:14px}
-    label{font-weight:600}
-    input,textarea{width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;font:inherit;background:#fff}
-    textarea{min-height:140px;resize:vertical}
-    button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
-    button[disabled]{opacity:.7;cursor:wait}
-    .row{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+    :root {
+      --fg:#1f2937;
+      --muted:#6b7280;
+      --accent:#0ea5e9;
+      --ok:#10b981;
+      --err:#ef4444;
+    }
+    body {
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      margin:0; color:var(--fg); line-height:1.5;
+      background:#fff;
+    }
+    .wrap {
+      max-width:860px; margin:0 auto; padding:28px 16px;
+    }
+    a { color:var(--accent); text-decoration:none }
+    a:hover { text-decoration:underline }
+    h1 { margin-top:0 }
+    form { margin-top:14px; display:grid; gap:14px }
+    label { font-weight:600 }
+    input,textarea {
+      width:100%; padding:12px;
+      border:1px solid #e5e7eb; border-radius:10px;
+      font:inherit; background:#fff;
+    }
+    textarea { min-height:140px; resize:vertical }
+    button {
+      background:var(--accent); color:#fff; border:0;
+      border-radius:12px; padding:12px 16px;
+      font-weight:700; cursor:pointer;
+      transition:background .2s;
+    }
+    button:hover { background:#0284c7 }
+    button[disabled]{ opacity:.7; cursor:wait }
+    .row { display:grid; gap:14px; grid-template-columns:1fr 1fr }
     @media (max-width:700px){.row{grid-template-columns:1fr}}
-    .note{color:var(--muted);font-size:.95rem}
-    .msg{padding:12px 14px;border-radius:10px;display:none;margin-top:6px}
-    .msg.ok{background:#ecfdf5;color:#065f46;display:block}
-    .msg.err{background:#fef2f2;color:#991b1b;display:block}
-    .hp{position:absolute;left:-5000px;opacity:0} /* honeypot */
+    .note { color:var(--muted); font-size:.95rem }
+    .msg {
+      margin-top:12px; padding:12px 14px; border-radius:10px;
+      font-weight:500; display:none;
+    }
+    .msg.ok { background:#ecfdf5; color:#065f46 }
+    .msg.err { background:#fef2f2; color:#991b1b }
+    .hp { position:absolute; left:-5000px; opacity:0 }
     .mailto{display:inline-flex;gap:8px;align-items:center}
-    .copyBtn{border:1px solid #e5e7eb;background:#f9fafb;color:#111827;padding:6px 10px;border-radius:10px;font-weight:600;cursor:pointer}
+    .copyBtn{
+      border:1px solid #e5e7eb; background:#f9fafb;
+      color:#111827; padding:6px 10px;
+      border-radius:10px; font-weight:600; cursor:pointer;
+    }
     .copyBtn:active{transform:translateY(1px)}
   </style>
 </head>
@@ -63,15 +93,13 @@
       <input type="hidden" name="site" value="wildlivewatch.com">
 
       <button id="sendBtn" type="submit">Send message</button>
-
-      <div id="ok" class="msg ok" role="status" aria-live="polite">Thanks! Your message has been sent. ✅</div>
-      <div id="err" class="msg err" role="alert">Oops—something went wrong. Please try again later. ❌</div>
+      <div id="notice" class="msg" role="alert"></div>
     </form>
 
     <p class="note" style="margin-top:16px">
       Prefer email? You can also reach us at
       <span class="mailto">
-        <a id="mailto" href="mailto:contact@wildlivewatch.com"><strong>contact@wildlivewatch.com</strong></a>
+        <a id="mailto" href="mailto:support@wildlivewatch.com"><strong>support@wildlivewatch.com</strong></a>
         <button class="copyBtn" id="copyBtn" type="button" aria-label="Copy email address">Copy</button>
       </span>
     </p>
@@ -79,14 +107,12 @@
 
   <script>
     const form   = document.getElementById('contact');
-    const ok     = document.getElementById('ok');
-    const err    = document.getElementById('err');
+    const notice = document.getElementById('notice');
     const sendBt = document.getElementById('sendBtn');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      ok.style.display = 'none';
-      err.style.display = 'none';
+      notice.style.display = 'none';
       sendBt.disabled = true; sendBt.textContent = 'Sending…';
 
       try {
@@ -97,13 +123,19 @@
         });
         if (resp.ok) {
           form.reset();
-          ok.style.display = 'block';
+          notice.textContent = "✅ Thanks! Your message has been sent.";
+          notice.className = 'msg ok';
+          notice.style.display = 'block';
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-          err.style.display = 'block';
+          notice.textContent = "❌ Oops—something went wrong. Please try again later.";
+          notice.className = 'msg err';
+          notice.style.display = 'block';
         }
       } catch (_) {
-        err.style.display = 'block';
+        notice.textContent = "❌ Oops—something went wrong. Please try again later.";
+        notice.className = 'msg err';
+        notice.style.display = 'block';
       } finally {
         sendBt.disabled = false; sendBt.textContent = 'Send message';
       }
@@ -111,7 +143,7 @@
 
     // Copy-to-clipboard for the email address
     document.getElementById('copyBtn').addEventListener('click', async () => {
-      const email = 'contact@wildlivewatch.com';
+      const email = 'support@wildlivewatch.com';
       try {
         await navigator.clipboard.writeText(email);
         const btn = document.getElementById('copyBtn');
@@ -119,7 +151,6 @@
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = prev, 1200);
       } catch (_) {
-        // Fallback: open mailto if clipboard fails
         window.location.href = 'mailto:' + email;
       }
     });
