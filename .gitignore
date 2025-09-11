@@ -1,0 +1,15 @@
+# Secrets & local state
+.env
+.env.*
+!env.example
+
+# Keys & certs
+*.pem
+*.p12
+*.keystore
+
+# Builds / caches
+dist/
+build/
+.cache/
+node_modules/
