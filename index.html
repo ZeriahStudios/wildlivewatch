@@ -171,56 +171,53 @@
   <!-- HLS support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-  // --- Config ---
+  // 1) Point to your CSV (clean format)
   const CSV_URL = "https://raw.githubusercontent.com/ZeriahStudios/wildlivewatch/main/Website%20URL.csv";
-  const DEFAULT_TILES = 6;
 
-  // --- Helpers ---
-  const isHls = url => /\.m3u8($|\?)/i.test(url);
-  const isMp4 = url => /\.mp4($|\?)/i.test(url);
-  const isYouTube = url => /youtube\.com|youtu\.be/i.test(url);
+  // 2) Add a quick status badge to header so you know what loaded
+  const statusBadge = document.createElement('span');
+  statusBadge.className = 'badge';
+  statusBadge.style.marginLeft = '8px';
+  document.querySelector('header .leftStack')?.appendChild(statusBadge);
 
-  // Robust-ish CSV parser (handles quotes and commas per RFC4180 basics)
-  function parseCSV(text) {
+  // Helpers
+  const isHls = u => /\.m3u8($|\?)/i.test(u);
+  const isYouTube = u => /youtube\.com|youtu\.be/i.test(u);
+
+  function parseCSV(text){
+    // Strip potential BOM
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     const rows = [];
-    let cur = [], field = '', inQuotes = false, i = 0;
-
-    while (i < text.length) {
-      const c = text[i];
-
-      if (inQuotes) {
-        if (c === '"') {
-          if (text[i + 1] === '"') { field += '"'; i += 2; continue; } // escaped quote
-          inQuotes = false; i++; continue;
+    let cur=[], field='', inQ=false, i=0;
+    while (i<text.length){
+      const c=text[i];
+      if (inQ){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field+='"'; i+=2; continue; }
+          inQ = false; i++; continue;
         }
         field += c; i++; continue;
       }
-
-      if (c === '"') { inQuotes = true; i++; continue; }
-      if (c === ',') { cur.push(field.trim()); field = ''; i++; continue; }
-      if (c === '\r') { i++; continue; }
-      if (c === '\n') { cur.push(field.trim()); rows.push(cur); cur = []; field = ''; i++; continue; }
-
+      if (c === '"'){ inQ=true; i++; continue; }
+      if (c === ','){ cur.push(field.trim()); field=''; i++; continue; }
+      if (c === '\r'){ i++; continue; }
+      if (c === '\n'){ cur.push(field.trim()); rows.push(cur); cur=[]; field=''; i++; continue; }
       field += c; i++;
     }
-    // push last field/row
-    if (field.length || cur.length) { cur.push(field.trim()); rows.push(cur); }
-
-    // map headers
+    if (field.length || cur.length){ cur.push(field.trim()); rows.push(cur); }
     if (!rows.length) return [];
-    const headers = rows[0].map(h => h.trim());
+    const headers = rows[0].map(h=>h.trim());
     return rows.slice(1)
-      .filter(r => r.some(v => (v && String(v).trim().length))) // drop empty lines
-      .map(r => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ? r[idx].trim() : ""])));
+      .filter(r => r.some(v => v && String(v).trim().length))
+      .map(r => Object.fromEntries(headers.map((h,idx)=>[h, r[idx]?r[idx].trim():''])));
   }
 
-  async function loadStreamsFromCSV() {
-    const res = await fetch(CSV_URL);
-    if (!res.ok) throw new Error("Failed to fetch CSV: " + res.status);
+  async function loadStreamsFromCSV(){
+    // 3) Force no-cache and add a cache-buster
+    const res = await fetch(CSV_URL + `?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error("CSV fetch failed: " + res.status);
     const text = await res.text();
     const rows = parseCSV(text);
-
-    // Try to be flexible with header names
     return rows.map(r => {
       const name = r.Name || r.Title || r.name || r.title || "Untitled";
       const url  = r.URL  || r.Url   || r.url   || r.link  || "";
@@ -229,210 +226,142 @@
     }).filter(x => x.src);
   }
 
-  // --- DOM things from your page ---
+  // === Your existing DOM references ===
   const grid = document.getElementById('grid');
   const tileCountSel = document.getElementById('tileCount');
   const btnPauseAll = document.getElementById('pauseAll');
   const btnPlayAll  = document.getElementById('playAll');
   const btnMuteAll  = document.getElementById('muteAll');
-  let tiles = []; // {el, type, video?, iframe?}
+  let tiles = [];
 
-  function attachVideoSource(video, url){
-    if (isHls(url)) {
-      if (window.Hls && Hls.isSupported()){
-        const hls = new Hls({lowLatencyMode:true});
-        hls.loadSource(url);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-      }
-    } else {
-      video.src = url;
-    }
-  }
-
-  function createMediaNode(container, stream) {
-    if (isYouTube(stream.src)) {
-      // Convert watch links to embed if needed
+  function createMediaNode(container, stream){
+    if (isYouTube(stream.src)){
       let src = stream.src;
-      if (src.includes("watch?v=")) {
+      if (src.includes("watch?v=")){
         const id = src.split("watch?v=")[1].split("&")[0];
         src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
-      } else if (src.includes("youtu.be/")) {
+      } else if (src.includes("youtu.be/")){
         const id = src.split("youtu.be/")[1].split(/[?&]/)[0];
         src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
       }
-
-      const iframe = document.createElement("iframe");
+      const iframe = document.createElement('iframe');
       iframe.src = src;
       iframe.allow = "autoplay; encrypted-media; picture-in-picture";
       iframe.referrerPolicy = "strict-origin-when-cross-origin";
       iframe.style.width = "100%";
       iframe.style.height = "100%";
-      iframe.setAttribute("frameborder", "0");
+      iframe.setAttribute("frameborder","0");
       container.appendChild(iframe);
-
-      return { type: "youtube", iframe };
+      return { type:'youtube', iframe };
     }
-
-    // Fallback: video element (MP4/HLS)
-    const video = document.createElement("video");
-    video.playsInline = true;
-    video.muted = true;
-    video.autoplay = true;
-    video.loop = true;
-    video.preload = "metadata";
+    const video = document.createElement('video');
+    video.playsInline = true; video.muted = true; video.autoplay = true; video.loop = true; video.preload = 'metadata';
     if (stream.poster) video.poster = stream.poster;
-    video.style.width = "100%";
-    video.style.height = "100%";
-    video.style.objectFit = "cover";
-
+    video.style.width = "100%"; video.style.height = "100%"; video.style.objectFit = "cover";
     container.appendChild(video);
-    attachVideoSource(video, stream.src);
-    return { type: "video", video };
+    if (isHls(stream.src) && window.Hls && Hls.isSupported()){
+      const hls = new Hls({lowLatencyMode:true});
+      hls.loadSource(stream.src); hls.attachMedia(video);
+    } else {
+      video.src = stream.src;
+    }
+    return { type:'video', video };
   }
 
   function updateBtns(el, type, video){
     const muteBtn = el.querySelector('.btnMute');
     const playBtn = el.querySelector('.btnPlay');
-
-    if (type === "video") {
-      muteBtn.textContent = (video.muted ? '🔇' : '🔊');
-      playBtn.textContent = (video.paused ? '▶' : '⏸');
+    const volWrap = el.querySelector('.range');
+    if (type === 'video'){
+      muteBtn.textContent = video.muted ? '🔇' : '🔊';
+      playBtn.textContent = video.paused ? '▶' : '⏸';
       muteBtn.disabled = false; playBtn.disabled = false;
+      if (volWrap) volWrap.style.display = '';
     } else {
-      // YouTube: we don’t wire buttons (YouTube has its own controls)
-      muteBtn.textContent = '🔇'; muteBtn.disabled = true;
-      playBtn.textContent = '▶';  playBtn.disabled = true;
-      const volWrap = el.querySelector('.range'); if (volWrap) volWrap.style.display = 'none';
+      muteBtn.textContent = '🔇'; playBtn.textContent = '▶';
+      muteBtn.disabled = true; playBtn.disabled = true;
+      if (volWrap) volWrap.style.display = 'none';
     }
   }
 
-  function toggleMute(targetEl, keepMuted){
-    tiles.forEach(({el, type, video})=>{
-      if (type !== "video") return; // only for real video elements
-      if (el === targetEl) {
+  function toggleMute(target, keepMuted){
+    tiles.forEach(({el,type,video})=>{
+      if (type !== 'video') return;
+      if (el === target){
         video.muted = keepMuted;
-        if (!keepMuted){ video.muted=false; video.play().catch(()=>{}); }
-      } else {
-        video.muted = true;
-      }
-      updateBtns(el, type, video);
+        if (!keepMuted){ video.muted = false; video.play().catch(()=>{}); }
+      } else { video.muted = true; }
+      updateBtns(el,type,video);
     });
   }
 
   function attachTileInteractions(node, type, video){
     node.addEventListener('click', e => {
       if (e.target.closest('.controlsBar')) return;
-      if (type === "video") toggleMute(node, false);
+      if (type === 'video') toggleMute(node, false);
     });
-
     const muteBtn = node.querySelector('.btnMute');
     const playBtn = node.querySelector('.btnPlay');
     const fsBtn   = node.querySelector('.btnFs');
     const vol     = node.querySelector('.vol');
-
-    if (muteBtn) muteBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      if (type === "video") toggleMute(node, video.muted);
-    });
-
-    if (playBtn) playBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      if (type === "video") {
-        if (video.paused) video.play(); else video.pause();
-        updateBtns(node, type, video);
-      }
-    });
-
-    if (fsBtn) fsBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      if (document.fullscreenElement) document.exitFullscreen();
-      else node.requestFullscreen().catch(()=>{});
-    });
-
-    if (vol) vol.addEventListener('input', e => {
-      if (type !== "video") return;
-      video.volume = parseFloat(e.target.value);
-      if (video.muted && video.volume > 0) toggleMute(node, false);
-    });
-
-    if (type === "video") {
-      video.addEventListener('play', () => node.classList.remove('initial'));
-      node.addEventListener('pointerdown', () => { if (video.paused) video.play().catch(()=>{}); });
-    } else {
-      // YouTube: remove initial hint immediately
-      node.classList.remove('initial');
-    }
+    if (muteBtn) muteBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video') toggleMute(node, video.muted); });
+    if (playBtn) playBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video'){ if (video.paused) video.play(); else video.pause(); updateBtns(node,type,video);} });
+    if (fsBtn)   fsBtn.addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
+    if (vol)     vol.addEventListener('input', e => { if (type!=='video') return; video.volume = parseFloat(e.target.value); if (video.muted && video.volume>0) toggleMute(node,false); });
+    if (type === 'video'){ video.addEventListener('play', ()=> node.classList.remove('initial')); node.addEventListener('pointerdown', ()=>{ if (video.paused) video.play().catch(()=>{}); }); }
+    else { node.classList.remove('initial'); }
   }
 
   function renderTiles(streams, n){
-    grid.innerHTML=''; tiles=[];
+    grid.innerHTML = ''; tiles = [];
     const tpl = document.getElementById('tileTpl');
-
     for (let i=0;i<n;i++){
       const data = streams[i % streams.length];
       const node = tpl.content.firstElementChild.cloneNode(true);
-
       node.querySelector('.title').textContent = data.title || 'Untitled';
-      const mediaSlot = node.querySelector('.media-slot');
-
-      const media = createMediaNode(mediaSlot, data);
+      const slot = node.querySelector('.media-slot');
+      const media = createMediaNode(slot, data);
       const video = media.video || null;
-
       attachTileInteractions(node, media.type, video);
       grid.appendChild(node);
-
       tiles.push({ el: node, type: media.type, video, iframe: media.iframe || null });
       updateBtns(node, media.type, video);
     }
   }
 
-  // Global controls
-  tileCountSel.addEventListener('change', ()=>{
-    const n = parseInt(tileCountSel.value, 10);
-    renderTiles(window._STREAMS || [], n);
-  });
-  btnPauseAll.addEventListener('click', ()=> tiles.forEach(t=>{
-    if (t.type === "video") { t.video.pause(); updateBtns(t.el, t.type, t.video); }
-  }));
-  btnPlayAll .addEventListener('click', ()=> tiles.forEach(t=>{
-    if (t.type === "video") { t.video.play().catch(()=>{}); updateBtns(t.el, t.type, t.video); }
-  }));
-  btnMuteAll .addEventListener('click', ()=> tiles.forEach(t=>{
-    if (t.type === "video") { t.video.muted = true; updateBtns(t.el, t.type, t.video); }
-  }));
+  const btnPauseAll = document.getElementById('pauseAll');
+  const btnPlayAll  = document.getElementById('playAll');
+  const btnMuteAll  = document.getElementById('muteAll');
+  tileCountSel.addEventListener('change', ()=> renderTiles(window._STREAMS || [], parseInt(tileCountSel.value,10)));
+  btnPauseAll.addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.pause(); updateBtns(t.el,t.type,t.video);} }));
+  btnPlayAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.play().catch(()=>{}); updateBtns(t.el,t.type,t.video);} }));
+  btnMuteAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.muted = true; updateBtns(t.el,t.type,t.video);} }));
 
-  // Boot
   (async function init(){
-    let streams = [];
     try {
-      streams = await loadStreamsFromCSV();
+      const streams = await loadStreamsFromCSV();
+      window._STREAMS = streams;
+      statusBadge.textContent = `CSV ✅ ${streams.length}`;
+      const initial = Math.min(parseInt(tileCountSel.value,10) || 6, streams.length || 6);
+      tileCountSel.value = String(initial);
+      renderTiles(streams, initial);
     } catch (e) {
-      console.warn("CSV load failed, using demo streams.", e);
-      // Fallback demo streams (your originals)
-      streams = [
+      console.warn('CSV load failed, using demo streams.', e);
+      statusBadge.textContent = 'CSV ❌ demo';
+      const demo = [
         { title: "Savannah Cam",     src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
         { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8" },
         { title: "Cliff Rookery",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
         { title: "River Bend",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
         { title: "Desert Den",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
         { title: "Rainforest Canopy",src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-        { title: "Mountain Pass",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-        { title: "Delta Marsh",      src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
       ];
+      window._STREAMS = demo;
+      renderTiles(demo, parseInt(tileCountSel.value,10) || 6);
     }
-
-    // Save globally for re-render on tile count change
-    window._STREAMS = streams;
-
-    // Set tile count dropdown smartly (cap options to streams length)
-    const total = streams.length || DEFAULT_TILES;
-    // Keep your original options but adjust selection:
-    tileCountSel.value = String(Math.min(DEFAULT_TILES, total));
-    renderTiles(streams, parseInt(tileCountSel.value, 10));
   })();
 </script>
+
 
 </body>
 </html>
