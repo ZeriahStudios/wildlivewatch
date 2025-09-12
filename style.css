@@ -1,0 +1,19 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  margin: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.cam-block {
+  margin: 20px auto;
+  padding: 10px;
+  background: white;
+  border-radius: 10px;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
