@@ -45,11 +45,6 @@
       border-bottom:1px solid var(--stroke);
     }
     .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px}
-    .brandMark{
-      width:36px; height:36px; border-radius:12px; display:grid; place-items:center;
-      background:conic-gradient(from 120deg,var(--accent2),var(--accent),var(--mango));
-      color:#052218; font-weight:900; box-shadow:0 6px 20px rgba(0,0,0,.35);
-    }
     nav{display:flex; gap:10px; align-items:center}
     a.nav{
       text-decoration:none; color:var(--fg); font-weight:600; font-size:14px;
@@ -62,6 +57,10 @@
     select,button,input[type="range"]{
       appearance:none; border:1px solid var(--stroke);
       background:#0c221b; color:var(--fg); border-radius:12px; padding:8px 10px; font:inherit;
+    }
+    .status-badge{
+      display:inline-block; margin-left:8px; padding:5px 8px; border-radius:999px; 
+      background:rgba(0,0,0,.55); border:1px solid var(--stroke); font-size:12px;
     }
 
     /* Grid */
@@ -104,18 +103,18 @@
   </style>
 </head>
 <body>
-  <!-- Responsive banner -->
+  <!-- Responsive banner (R2 URL) -->
   <div class="bannerWrap">
     <picture>
-      <source media="(max-width: 768px)" srcset="./mobile_banner.webp">
-      <img class="banner" src="./desktop_banner.webp" alt="WildLiveWatch — safari friends in a Madagascar sunset">
+      <source media="(max-width: 768px)" srcset="https://assets.wildlivewatch.com/wildlivewatch_banner.webp">
+      <img class="banner" src="https://assets.wildlivewatch.com/wildlivewatch_banner.webp"
+           alt="WildLiveWatch — safari friends in a Madagascar sunset">
     </picture>
   </div>
 
   <header>
     <div class="brand">
-      <div class="brandMark">🐾</div>
-      <div><span style="font-weight:700;">Wild</span>LiveWatch</div>
+      <img src="https://assets.wildlivewatch.com/word_mark.webp" alt="WildLiveWatch Logo" style="height:36px; border-radius:8px;" />
     </div>
     <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-self:end;">
       <nav>
@@ -134,6 +133,7 @@
         <button id="pauseAll">Pause all</button>
         <button id="playAll">Play all</button>
         <button id="muteAll">Mute all</button>
+        <span id="statusBadge" class="status-badge">Loading…</span>
       </div>
     </div>
   </header>
@@ -170,198 +170,210 @@
 
   <!-- HLS support -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script>
-  // 1) Point to your CSV (clean format)
-  const CSV_URL = "https://raw.githubusercontent.com/ZeriahStudios/wildlivewatch/main/Website%20URL.csv";
+  <script>
+    // 1) Your CSV (GitHub raw)
+    const CSV_URL = "https://raw.githubusercontent.com/ZeriahStudios/wildlivewatch/main/Website%20URL.csv";
 
-  // 2) Add a quick status badge to header so you know what loaded
-  const statusBadge = document.createElement('span');
-  statusBadge.className = 'badge';
-  statusBadge.style.marginLeft = '8px';
-  document.querySelector('header .leftStack')?.appendChild(statusBadge);
+    // Helpers
+    const isHls = u => /\.m3u8($|\?)/i.test(u);
+    const isYouTube = u => /youtube\.com|youtu\.be/i.test(u);
 
-  // Helpers
-  const isHls = u => /\.m3u8($|\?)/i.test(u);
-  const isYouTube = u => /youtube\.com|youtu\.be/i.test(u);
-
-  function parseCSV(text){
-    // Strip potential BOM
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-    const rows = [];
-    let cur=[], field='', inQ=false, i=0;
-    while (i<text.length){
-      const c=text[i];
-      if (inQ){
-        if (c === '"'){
-          if (text[i+1] === '"'){ field+='"'; i+=2; continue; }
-          inQ = false; i++; continue;
+    function parseCSV(text){
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const rows = [];
+      let cur=[], field='', inQ=false, i=0;
+      while (i<text.length){
+        const c=text[i];
+        if (inQ){
+          if (c === '"'){ if (text[i+1] === '"'){ field+='"'; i+=2; continue; } inQ=false; i++; continue; }
+          field += c; i++; continue;
         }
-        field += c; i++; continue;
+        if (c === '"'){ inQ=true; i++; continue; }
+        if (c === ','){ cur.push(field.trim()); field=''; i++; continue; }
+        if (c === '\r'){ i++; continue; }
+        if (c === '\n'){ cur.push(field.trim()); rows.push(cur); cur=[]; field=''; i++; continue; }
+        field += c; i++;
       }
-      if (c === '"'){ inQ=true; i++; continue; }
-      if (c === ','){ cur.push(field.trim()); field=''; i++; continue; }
-      if (c === '\r'){ i++; continue; }
-      if (c === '\n'){ cur.push(field.trim()); rows.push(cur); cur=[]; field=''; i++; continue; }
-      field += c; i++;
+      if (field.length || cur.length){ cur.push(field.trim()); rows.push(cur); }
+      if (!rows.length) return [];
+      const headers = rows[0].map(h=>h.trim());
+      return rows.slice(1)
+        .filter(r => r.some(v => v && String(v).trim().length))
+        .map(r => Object.fromEntries(headers.map((h,idx)=>[h, r[idx]?r[idx].trim():''])));
     }
-    if (field.length || cur.length){ cur.push(field.trim()); rows.push(cur); }
-    if (!rows.length) return [];
-    const headers = rows[0].map(h=>h.trim());
-    return rows.slice(1)
-      .filter(r => r.some(v => v && String(v).trim().length))
-      .map(r => Object.fromEntries(headers.map((h,idx)=>[h, r[idx]?r[idx].trim():''])));
-  }
 
-  async function loadStreamsFromCSV(){
-    // 3) Force no-cache and add a cache-buster
-    const res = await fetch(CSV_URL + `?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error("CSV fetch failed: " + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-    return rows.map(r => {
-      const name = r.Name || r.Title || r.name || r.title || "Untitled";
-      const url  = r.URL  || r.Url   || r.url   || r.link  || "";
-      const poster = r.Poster || r.poster || "";
-      return { title: name, src: url, poster };
-    }).filter(x => x.src);
-  }
-
-  // === Your existing DOM references ===
-  const grid = document.getElementById('grid');
-  const tileCountSel = document.getElementById('tileCount');
-  const btnPauseAll = document.getElementById('pauseAll');
-  const btnPlayAll  = document.getElementById('playAll');
-  const btnMuteAll  = document.getElementById('muteAll');
-  let tiles = [];
-
-  function createMediaNode(container, stream){
-    if (isYouTube(stream.src)){
-      let src = stream.src;
-      if (src.includes("watch?v=")){
-        const id = src.split("watch?v=")[1].split("&")[0];
-        src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
-      } else if (src.includes("youtu.be/")){
-        const id = src.split("youtu.be/")[1].split(/[?&]/)[0];
-        src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
+    function cleanSrcLike(value){
+      // Accept raw URL or strings like: src="https://..." or src='https://...'
+      if (!value) return "";
+      let v = value.trim();
+      if (v.startsWith('src=')){
+        v = v.replace(/^src=\s*['"]?/i, '').replace(/['"]\s*$/,'');
       }
-      const iframe = document.createElement('iframe');
-      iframe.src = src;
-      iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-      iframe.referrerPolicy = "strict-origin-when-cross-origin";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.setAttribute("frameborder","0");
-      container.appendChild(iframe);
-      return { type:'youtube', iframe };
+      return v;
     }
-    const video = document.createElement('video');
-    video.playsInline = true; video.muted = true; video.autoplay = true; video.loop = true; video.preload = 'metadata';
-    if (stream.poster) video.poster = stream.poster;
-    video.style.width = "100%"; video.style.height = "100%"; video.style.objectFit = "cover";
-    container.appendChild(video);
-    if (isHls(stream.src) && window.Hls && Hls.isSupported()){
-      const hls = new Hls({lowLatencyMode:true});
-      hls.loadSource(stream.src); hls.attachMedia(video);
-    } else {
-      video.src = stream.src;
+
+    async function loadStreamsFromCSV(){
+      const res = await fetch(CSV_URL + `?t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error("CSV fetch failed: " + res.status);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      return rows.map(r => {
+        const name = r.Name || r.Title || r.Channel || r.channel || "Untitled";
+        const urlRaw = r.URL || r.Url || r.url || r.link || r.VideoURL || r.videoURL || r.videourl || "";
+        const poster = r.Poster || r.poster || r.FrameURL || r.frameURL || "";
+        const url = cleanSrcLike(urlRaw);
+        return { title: name, src: url, poster };
+      }).filter(x => x.src);
     }
-    return { type:'video', video };
-  }
 
-  function updateBtns(el, type, video){
-    const muteBtn = el.querySelector('.btnMute');
-    const playBtn = el.querySelector('.btnPlay');
-    const volWrap = el.querySelector('.range');
-    if (type === 'video'){
-      muteBtn.textContent = video.muted ? '🔇' : '🔊';
-      playBtn.textContent = video.paused ? '▶' : '⏸';
-      muteBtn.disabled = false; playBtn.disabled = false;
-      if (volWrap) volWrap.style.display = '';
-    } else {
-      muteBtn.textContent = '🔇'; playBtn.textContent = '▶';
-      muteBtn.disabled = true; playBtn.disabled = true;
-      if (volWrap) volWrap.style.display = 'none';
+    const grid = document.getElementById('grid');
+    const tileCountSel = document.getElementById('tileCount');
+    const btnPauseAll = document.getElementById('pauseAll');
+    const btnPlayAll  = document.getElementById('playAll');
+    const btnMuteAll  = document.getElementById('muteAll');
+    const statusBadge = document.getElementById('statusBadge');
+    let tiles = [];
+
+    function createMediaNode(container, stream){
+      if (isYouTube(stream.src)){
+        let src = stream.src;
+
+        // Normalize common YouTube formats → embed
+        if (src.includes("watch?v=")){
+          const id = src.split("watch?v=")[1].split("&")[0];
+          src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
+        } else if (src.includes("youtu.be/")){
+          const id = src.split("youtu.be/")[1].split(/[?&]/)[0];
+          src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
+        } else if (!/\/embed\//.test(src)) {
+          // Last resort: try to extract v= if present
+          const m = src.match(/[?&]v=([^&]+)/);
+          if (m && m[1]) {
+            src = `https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1&playsinline=1&controls=1&modestbranding=1&rel=0`;
+          }
+        }
+
+        const iframe = document.createElement('iframe');
+        iframe.src = src;
+        iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.setAttribute("frameborder","0");
+        container.appendChild(iframe);
+        return { type:'youtube', iframe };
+      }
+
+      const video = document.createElement('video');
+      video.playsInline = true; video.muted = true; video.autoplay = true; video.loop = true; video.preload = 'metadata';
+      if (stream.poster) video.poster = stream.poster;
+      video.style.width = "100%"; video.style.height = "100%"; video.style.objectFit = "cover";
+      container.appendChild(video);
+
+      if (isHls(stream.src) && window.Hls && Hls.isSupported()){
+        const hls = new Hls({lowLatencyMode:true});
+        hls.loadSource(stream.src); hls.attachMedia(video);
+      } else {
+        video.src = stream.src;
+      }
+      return { type:'video', video };
     }
-  }
 
-  function toggleMute(target, keepMuted){
-    tiles.forEach(({el,type,video})=>{
-      if (type !== 'video') return;
-      if (el === target){
-        video.muted = keepMuted;
-        if (!keepMuted){ video.muted = false; video.play().catch(()=>{}); }
-      } else { video.muted = true; }
-      updateBtns(el,type,video);
-    });
-  }
-
-  function attachTileInteractions(node, type, video){
-    node.addEventListener('click', e => {
-      if (e.target.closest('.controlsBar')) return;
-      if (type === 'video') toggleMute(node, false);
-    });
-    const muteBtn = node.querySelector('.btnMute');
-    const playBtn = node.querySelector('.btnPlay');
-    const fsBtn   = node.querySelector('.btnFs');
-    const vol     = node.querySelector('.vol');
-    if (muteBtn) muteBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video') toggleMute(node, video.muted); });
-    if (playBtn) playBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video'){ if (video.paused) video.play(); else video.pause(); updateBtns(node,type,video);} });
-    if (fsBtn)   fsBtn.addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
-    if (vol)     vol.addEventListener('input', e => { if (type!=='video') return; video.volume = parseFloat(e.target.value); if (video.muted && video.volume>0) toggleMute(node,false); });
-    if (type === 'video'){ video.addEventListener('play', ()=> node.classList.remove('initial')); node.addEventListener('pointerdown', ()=>{ if (video.paused) video.play().catch(()=>{}); }); }
-    else { node.classList.remove('initial'); }
-  }
-
-  function renderTiles(streams, n){
-    grid.innerHTML = ''; tiles = [];
-    const tpl = document.getElementById('tileTpl');
-    for (let i=0;i<n;i++){
-      const data = streams[i % streams.length];
-      const node = tpl.content.firstElementChild.cloneNode(true);
-      node.querySelector('.title').textContent = data.title || 'Untitled';
-      const slot = node.querySelector('.media-slot');
-      const media = createMediaNode(slot, data);
-      const video = media.video || null;
-      attachTileInteractions(node, media.type, video);
-      grid.appendChild(node);
-      tiles.push({ el: node, type: media.type, video, iframe: media.iframe || null });
-      updateBtns(node, media.type, video);
+    function updateBtns(el, type, video){
+      const muteBtn = el.querySelector('.btnMute');
+      const playBtn = el.querySelector('.btnPlay');
+      const volWrap = el.querySelector('.range');
+      if (type === 'video'){
+        muteBtn.textContent = video.muted ? '🔇' : '🔊';
+        playBtn.textContent = video.paused ? '▶' : '⏸';
+        muteBtn.disabled = false; playBtn.disabled = false;
+        if (volWrap) volWrap.style.display = '';
+      } else {
+        muteBtn.textContent = '🔇'; playBtn.textContent = '▶';
+        muteBtn.disabled = true; playBtn.disabled = true;
+        if (volWrap) volWrap.style.display = 'none';
+      }
     }
-  }
 
-  const btnPauseAll = document.getElementById('pauseAll');
-  const btnPlayAll  = document.getElementById('playAll');
-  const btnMuteAll  = document.getElementById('muteAll');
-  tileCountSel.addEventListener('change', ()=> renderTiles(window._STREAMS || [], parseInt(tileCountSel.value,10)));
-  btnPauseAll.addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.pause(); updateBtns(t.el,t.type,t.video);} }));
-  btnPlayAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.play().catch(()=>{}); updateBtns(t.el,t.type,t.video);} }));
-  btnMuteAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.muted = true; updateBtns(t.el,t.type,t.video);} }));
-
-  (async function init(){
-    try {
-      const streams = await loadStreamsFromCSV();
-      window._STREAMS = streams;
-      statusBadge.textContent = `CSV ✅ ${streams.length}`;
-      const initial = Math.min(parseInt(tileCountSel.value,10) || 6, streams.length || 6);
-      tileCountSel.value = String(initial);
-      renderTiles(streams, initial);
-    } catch (e) {
-      console.warn('CSV load failed, using demo streams.', e);
-      statusBadge.textContent = 'CSV ❌ demo';
-      const demo = [
-        { title: "Savannah Cam",     src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
-        { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8" },
-        { title: "Cliff Rookery",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-        { title: "River Bend",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-        { title: "Desert Den",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-        { title: "Rainforest Canopy",src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
-      ];
-      window._STREAMS = demo;
-      renderTiles(demo, parseInt(tileCountSel.value,10) || 6);
+    function toggleMute(target, keepMuted){
+      tiles.forEach(({el,type,video})=>{
+        if (type !== 'video') return;
+        if (el === target){
+          if (!keepMuted){ video.muted = false; video.play().catch(()=>{}); }
+        } else { video.muted = true; }
+        updateBtns(el,type,video);
+      });
     }
-  })();
-</script>
 
+    function attachTileInteractions(node, type, video){
+      node.addEventListener('click', e => {
+        if (e.target.closest('.controlsBar')) return;
+        if (type === 'video') toggleMute(node, false);
+      });
+      const muteBtn = node.querySelector('.btnMute');
+      const playBtn = node.querySelector('.btnPlay');
+      const fsBtn   = node.querySelector('.btnFs');
+      const vol     = node.querySelector('.vol');
+      if (muteBtn) muteBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video') toggleMute(node, video.muted); });
+      if (playBtn) playBtn.addEventListener('click', e => { e.stopPropagation(); if (type==='video'){ if (video.paused) video.play(); else video.pause(); updateBtns(node,type,video);} });
+      if (fsBtn)   fsBtn.addEventListener('click', e => { e.stopPropagation(); if (document.fullscreenElement) document.exitFullscreen(); else node.requestFullscreen().catch(()=>{}); });
+      if (vol)     vol.addEventListener('input', e => { if (type!=='video') return; video.volume = parseFloat(e.target.value); if (video.muted && video.volume>0) toggleMute(node,false); });
+      if (type === 'video'){ video.addEventListener('play', ()=> node.classList.remove('initial')); node.addEventListener('pointerdown', ()=>{ if (video.paused) video.play().catch(()=>{}); }); }
+      else { node.classList.remove('initial'); }
+    }
 
+    function renderTiles(streams, n){
+      grid.innerHTML = ''; tiles = [];
+      const tpl = document.getElementById('tileTpl');
+      for (let i=0;i<n && streams.length;i++){
+        const data = streams[i % streams.length];
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        node.querySelector('.title').textContent = data.title || 'Untitled';
+        const slot = node.querySelector('.media-slot');
+        const media = createMediaNode(slot, data);
+        const video = media.video || null;
+        attachTileInteractions(node, media.type, video);
+        grid.appendChild(node);
+        tiles.push({ el: node, type: media.type, video, iframe: media.iframe || null });
+        updateBtns(node, media.type, video);
+      }
+      if (!streams.length){
+        const p = document.createElement('p');
+        p.textContent = "No streams found in CSV.";
+        p.style.opacity = .8; p.style.textAlign = 'center';
+        grid.appendChild(p);
+      }
+    }
+
+    tileCountSel.addEventListener('change', ()=> renderTiles(window._STREAMS || [], parseInt(tileCountSel.value,10)));
+
+    btnPauseAll.addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.pause(); updateBtns(t.el,t.type,t.video);} }));
+    btnPlayAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.play().catch(()=>{}); updateBtns(t.el,t.type,t.video);} }));
+    btnMuteAll .addEventListener('click', ()=> tiles.forEach(t=>{ if (t.type==='video'){ t.video.muted = true; updateBtns(t.el,t.type,t.video);} }));
+
+    (async function init(){
+      try {
+        const streams = await loadStreamsFromCSV();
+        window._STREAMS = streams;
+        statusBadge.textContent = `CSV ✅ ${streams.length}`;
+        const initial = Math.min(parseInt(tileCountSel.value,10) || 6, streams.length || 6);
+        tileCountSel.value = String(initial);
+        renderTiles(streams, initial);
+      } catch (e) {
+        console.warn('CSV load failed, using demo streams.', e);
+        statusBadge.textContent = 'CSV ❌ demo';
+        const demo = [
+          { title: "Savannah Cam",     src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
+          { title: "Forest Waterhole", src: "https://test-streams.mux.dev/test_001/stream.m3u8" },
+          { title: "Cliff Rookery",    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
+          { title: "River Bend",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
+          { title: "Desert Den",       src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
+          { title: "Rainforest Canopy",src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
+        ];
+        window._STREAMS = demo;
+        renderTiles(demo, parseInt(tileCountSel.value,10) || 6);
+      }
+    })();
+  </script>
 </body>
 </html>
