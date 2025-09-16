@@ -100,6 +100,35 @@
     .tile.initial .floatingHint{opacity:1}
 
     footer{opacity:.8; padding: 0 18px 24px; text-align:center; font-size:12px}
+    /* make the video/iframe truly fill the tile */
+.tile .media-slot{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:#000;
+  z-index:1;
+}
+
+/* cover behavior for YouTube iframes (simulate object-fit: cover) */
+.tile .media-slot iframe{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:177.78%;   /* 16:9 cover trick */
+  height:100%;
+  display:block;
+  border:0;
+}
+
+/* when the container is taller than wide (unlikely at 16:9), swap axes */
+@media (max-aspect-ratio:16/9){
+  .tile .media-slot iframe{
+    width:100%;
+    height:177.78%;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -253,15 +282,17 @@
           }
         }
 
-        const iframe = document.createElement('iframe');
-        iframe.src = src;
-        iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-        iframe.referrerPolicy = "strict-origin-when-cross-origin";
-        iframe.style.width = "100%";
-        iframe.style.height = "100%";
-        iframe.setAttribute("frameborder","0");
-        container.appendChild(iframe);
-        return { type:'youtube', iframe };
+const slot = container; // already the .media-slot
+const iframe = document.createElement('iframe');
+iframe.src = src;
+iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+iframe.referrerPolicy = "strict-origin-when-cross-origin";
+iframe.setAttribute("frameborder","0");
+iframe.setAttribute("allowfullscreen","");
+// no inline width/height; CSS will handle cover sizing
+slot.appendChild(iframe);
+return { type:'youtube', iframe };
+
       }
 
       const video = document.createElement('video');
